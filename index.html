@@ -3,9 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kalkulator NPK v38 (Ulepszony)</title>
+    <title>Kalkulator NPK v39 (Zaawansowany)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/javascript-lp-solver/prod/solver.js"></script>
+    <!-- Dodane biblioteki -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         /* Style bez zmian */
         input[type="radio"]:checked + span { color: theme('colors.indigo.700'); font-weight: 600; }
@@ -32,6 +36,25 @@
             }
             .input-group > * {
                 margin-bottom: 0.5rem;
+            }
+        }
+        
+        /* Dodane style dla wykresów */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+        
+        /* Style dla PDF */
+        @media print {
+            body {
+                background-color: white;
+                color: black;
+            }
+            .no-print {
+                display: none;
             }
         }
     </style>
@@ -77,6 +100,33 @@
                      </div>
                  </div>
             </div>
+            
+            <!-- Dodane opcje optymalizacji -->
+            <div class="space-y-3">
+                <h3 class="text-base font-semibold text-gray-800 border-b pb-2 mb-4">Opcje Optymalizacji</h3>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-600 mb-2">Strategia Optymalizacji</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center">
+                                <input type="radio" name="optimizationStrategy" value="accuracy" checked class="form-radio text-indigo-600 mr-2 focus:ring-indigo-500">
+                                <span class="text-sm text-gray-700">Dokładność (priorytet dokładnego składu)</span>
+                            </label>
+                            <label class="flex items-center">
+                                <input type="radio" name="optimizationStrategy" value="cost" class="form-radio text-indigo-600 mr-2 focus:ring-indigo-500">
+                                <span class="text-sm text-gray-700">Koszt (priorytet niższej ceny)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="toleranceSlider" class="block text-sm font-medium text-gray-600 mb-2">Tolerancja (±%)</label>
+                        <div class="flex items-center space-x-2">
+                            <input type="range" id="toleranceSlider" min="0.5" max="5" step="0.5" value="1.5" class="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                            <span id="toleranceValue" class="text-sm font-medium text-gray-700 min-w-[40px] text-right">1.5%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <button id="calculateButton" class="w-full bg-indigo-600 text-white font-semibold py-3 px-4 rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition duration-150 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed text-base">
                 Oblicz Mieszankę NPK
@@ -92,14 +142,40 @@
 
             <div id="result" class="mt-8 space-y-6 border-t border-gray-200 pt-6 hidden">
                 <div id="statusMessageContainer"></div>
+                
+                <!-- Dodane kontenery na wykresy -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Skład Mieszanki</h3>
+                        <div class="chart-container">
+                            <canvas id="fertilizerChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-3">Porównanie Składników</h3>
+                        <div class="chart-container">
+                            <canvas id="nutrientComparisonChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+                
                 <div id="resultTableContainer" class="overflow-x-auto responsive-table"></div>
                 <div id="costInfoContainer" class="responsive-table"></div>
                 <div id="finalCompContainer" class="responsive-table"></div>
                 
-                <!-- Dodany przycisk eksportu do PDF -->
-                <div class="flex justify-center mt-4">
+                <!-- Przyciski eksportu -->
+                <div class="flex flex-wrap justify-center gap-4 mt-6">
                     <button id="exportPdfBtn" class="bg-green-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
+                        </svg>
                         Eksportuj do PDF
+                    </button>
+                    <button id="printResultsBtn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition duration-150 ease-in-out">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5 4v3H4a2 2 0 00-2 2v3a2 2 0 002 2h1v2a2 2 0 002 2h6a2 2 0 002-2v-2h1a2 2 0 002-2V9a2 2 0 00-2-2h-1V4a2 2 0 00-2-2H7a2 2 0 00-2 2zm8 0H7v3h6V4zm0 8H7v4h6v-4z" clip-rule="evenodd" />
+                        </svg>
+                        Drukuj Wyniki
                     </button>
                 </div>
             </div>
@@ -131,7 +207,7 @@
        </div>
     </div>
 
-    <!-- Dodany modal z informacją o błędzie -->
+    <!-- Modal z informacją o błędzie -->
     <div id="errorModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full hidden flex items-center justify-center z-50 modal-overlay p-4" aria-labelledby="error-modal-title" role="dialog" aria-modal="true">
        <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white modal-content">
            <div class="mt-3">
@@ -149,6 +225,15 @@
                    </button>
                </div>
            </div>
+       </div>
+    </div>
+
+    <!-- Modal z informacją o generowaniu PDF -->
+    <div id="pdfGeneratingModal" class="fixed inset-0 bg-gray-600 bg-opacity-75 overflow-y-auto h-full w-full hidden flex items-center justify-center z-50 modal-overlay p-4" aria-labelledby="pdf-modal-title" role="dialog" aria-modal="true">
+       <div class="relative mx-auto p-5 border w-full max-w-md shadow-lg rounded-lg bg-white modal-content text-center">
+           <h3 id="pdf-modal-title" class="text-lg leading-6 font-medium text-gray-900 mb-4">Generowanie PDF</h3>
+           <div class="spinner"></div>
+           <p class="mt-4 text-gray-600">Trwa generowanie dokumentu PDF, proszę czekać...</p>
        </div>
     </div>
 
@@ -177,7 +262,17 @@
         const FERTILIZER_NAMES = Object.keys(FERTILIZER_DATA);
         const NUM_FERTILIZERS = FERTILIZER_NAMES.length;
         const MG_FERT_NAME = "Siarczan magnezu";
-        const ABSOLUTE_TOLERANCE = { N: 1.5, P: 1.5, K: 1.5, Mg: 0.5 };
+        
+        // Kolory dla wykresów
+        const CHART_COLORS = [
+            '#4F46E5', // indigo-600
+            '#7C3AED', // purple-600
+            '#EC4899', // pink-600
+            '#F59E0B', // amber-500
+            '#10B981', // emerald-500
+            '#3B82F6', // blue-500
+            '#6366F1'  // indigo-500
+        ];
 
         // --- Zabawne komunikaty ładowania ---
         const loadingMessages = [
@@ -221,10 +316,19 @@
         const closeFertilizerModalBtnX = document.getElementById('closeFertilizerModalBtnX');
         const fertilizerTableContainer = document.getElementById('fertilizerTableContainer');
         const exportPdfBtn = document.getElementById('exportPdfBtn');
+        const printResultsBtn = document.getElementById('printResultsBtn');
         const errorModal = document.getElementById('errorModal');
         const errorModalContent = document.getElementById('errorModalContent');
         const closeErrorModalBtn = document.getElementById('closeErrorModalBtn');
         const confirmErrorModalBtn = document.getElementById('confirmErrorModalBtn');
+        const pdfGeneratingModal = document.getElementById('pdfGeneratingModal');
+        const toleranceSlider = document.getElementById('toleranceSlider');
+        const toleranceValue = document.getElementById('toleranceValue');
+        const optimizationStrategyRadios = document.querySelectorAll('input[name="optimizationStrategy"]');
+
+        // Wykresy
+        let fertilizerChart = null;
+        let nutrientComparisonChart = null;
 
         let lastResults = null;
         let progressInterval = null;
@@ -242,7 +346,7 @@
                    (!targetInputs.useMg || dMg <= toleranceValues.Mg);
         };
         
-        const evaluateCombination = (percentagesDecimal, currentTotalMass, targetInputs) => {
+        const evaluateCombination = (percentagesDecimal, currentTotalMass, targetInputs, optimizationGoal) => {
             let cN = 0, cP = 0, cK = 0, cS = 0, cMg = 0, cCost = 0;
             
             for (let i = 0; i < NUM_FERTILIZERS; i++) {
@@ -271,9 +375,16 @@
             const eMg = targetInputs.useMg ? Math.pow(targetInputs.targetMg - cMg, 2) : 0;
             
             // Waga błędu - NPK ma większą wagę niż Mg
-            const eS = (eN + eP + eK) * 3 + eMg;
+            let errorScore = (eN + eP + eK) * 3 + eMg;
             
-            return { nutrients: nR, cost: cCost, errorScore: eS };
+            // Jeśli optymalizujemy pod kątem kosztu, dodajemy koszt do wyniku błędu
+            if (optimizationGoal === 'cost') {
+                // Normalizacja kosztu do skali błędu
+                const costFactor = 0.1; // Współczynnik wagi kosztu
+                errorScore = errorScore + (cCost * costFactor);
+            }
+            
+            return { nutrients: nR, cost: cCost, errorScore: errorScore };
         };
 
         // --- Walidacja danych wejściowych ---
@@ -314,6 +425,12 @@
         
         calculateButton.addEventListener('click', handleCalculation);
         exportPdfBtn.addEventListener('click', handlePdfExport);
+        printResultsBtn.addEventListener('click', handlePrint);
+        
+        // Obsługa suwaka tolerancji
+        toleranceSlider.addEventListener('input', function() {
+            toleranceValue.textContent = `${this.value}%`;
+        });
 
         // --- Fertilizer Preview Modal Logic ---
         showFertilizersBtn.addEventListener('click', () => {
@@ -437,8 +554,17 @@
                 }
             }
             
-            const optimizationGoal = 'accuracy';
-            const userTolerance = 1.5;
+            // Pobierz strategię optymalizacji
+            let optimizationGoal = 'accuracy';
+            for (const radio of optimizationStrategyRadios) {
+                if (radio.checked) {
+                    optimizationGoal = radio.value;
+                    break;
+                }
+            }
+            
+            // Pobierz wartość tolerancji
+            const userTolerance = parseFloat(toleranceSlider.value);
             
             return {
                 targetN,
@@ -472,6 +598,16 @@
             lastResults = null;
             loaderContainer.style.display = 'block';
 
+            // Zniszcz istniejące wykresy, jeśli istnieją
+            if (fertilizerChart) {
+                fertilizerChart.destroy();
+                fertilizerChart = null;
+            }
+            if (nutrientComparisonChart) {
+                nutrientComparisonChart.destroy();
+                nutrientComparisonChart = null;
+            }
+
             let progress = 0;
             progressBarFill.style.width = '0%';
             progressPercent.textContent = '0%';
@@ -481,7 +617,7 @@
                 clearInterval(progressInterval);
             }
 
-            const totalDuration = 3000; // Skrócony czas ładowania
+            const totalDuration = 2500; // Skrócony czas ładowania
             const intervalTime = 100;
             const steps = totalDuration / intervalTime;
             const increment = 100 / steps;
@@ -527,8 +663,16 @@
         // --- LP Solver Calculation Function ---
         function calculateMixtureLP(inputs) {
             try {
-                const { targetN, targetP, targetK, targetMg, totalMass, useMg } = inputs;
+                const { targetN, targetP, targetK, targetMg, totalMass, useMg, optimizationGoal, userTolerance } = inputs;
                 const numFertilizers = FERTILIZER_NAMES.length;
+                
+                // Ustawienie tolerancji na podstawie wartości z suwaka
+                const tolerances = {
+                    N: userTolerance,
+                    P: userTolerance,
+                    K: userTolerance,
+                    Mg: userTolerance / 3 // Mniejsza tolerancja dla magnezu
+                };
                 
                 // Sprawdzenie czy solver jest dostępny
                 if (typeof solver === 'undefined' || typeof solver.Solve !== 'function') {
@@ -558,6 +702,12 @@
                         const dataKey = nutKey === 'P' ? 'P' : (nutKey === 'K' ? 'K' : nutKey);
                         model.variables[`f${i}`][`${nutKey}Target`] = FERTILIZER_DATA[name][dataKey] / 100;
                     });
+                    
+                    // Jeśli optymalizujemy pod kątem kosztu, dodajemy koszt do funkcji celu
+                    if (optimizationGoal === 'cost') {
+                        const price = FERTILIZER_PRICES[name] || 0;
+                        model.variables[`f${i}`].errorScore = price / 100; // Normalizacja ceny
+                    }
                 });
                 
                 // Dodanie zmiennej błędu
@@ -633,21 +783,14 @@
                 }
                 
                 // Obliczenie końcowych wartości
-                const finalEval = evaluateCombination(finalPercentages.map(p => p / 100), totalMass, inputs);
+                const finalEval = evaluateCombination(finalPercentages.map(p => p / 100), totalMass, inputs, optimizationGoal);
                 
                 const finalBestCombination = {
                     percentages: finalPercentages,
                     nutrients: finalEval.nutrients,
                     cost: finalEval.cost,
                     score: finalEval.errorScore,
-                    optimizationGoal: 'accuracy'
-                };
-                
-                const tolerances = {
-                    N: ABSOLUTE_TOLERANCE.N,
-                    P: ABSOLUTE_TOLERANCE.P,
-                    K: ABSOLUTE_TOLERANCE.K,
-                    Mg: useMg ? ABSOLUTE_TOLERANCE.Mg : 0
+                    optimizationGoal: optimizationGoal
                 };
                 
                 return {
@@ -683,7 +826,7 @@
                 return;
             }
             
-            const { percentages, nutrients, cost } = bestCombination;
+            const { percentages, nutrients, cost, optimizationGoal } = bestCombination;
             const { N: rN, P: rP, K: rK, Mg: rMg, S: rS } = nutrients;
             const { targetN, targetP, targetK, targetMg } = inputs;
             
@@ -700,14 +843,24 @@
                 statusClass = "bg-yellow-100 border-yellow-400 text-yellow-700";
             }
             
+            // Dodanie informacji o strategii optymalizacji
+            const strategyInfo = optimizationGoal === 'cost' 
+                ? "Zastosowano optymalizację pod kątem kosztu." 
+                : "Zastosowano optymalizację pod kątem dokładności składu.";
+            
             statusMessageContainer.innerHTML = `
                 <div class="${statusClass} border px-4 py-3 rounded-lg relative" role="alert">
-                    ${statusMessage}
+                    <p class="font-medium">${statusMessage}</p>
+                    <p class="mt-1 text-sm">${strategyInfo}</p>
                 </div>`;
             
             resultTableContainer.innerHTML = generateCompositionTable(percentages, totalMass);
             costInfoContainer.innerHTML = generateCostTable(percentages, totalMass, cost);
             finalCompContainer.innerHTML = generateNutrientResultTable(inputs, nutrients, tolerances);
+            
+            // Generowanie wykresów
+            renderFertilizerChart(percentages);
+            renderNutrientComparisonChart(inputs, nutrients);
             
             resultDiv.style.display = 'block';
             loaderContainer.style.display = 'none';
@@ -869,6 +1022,126 @@
             
             return html;
         }
+        
+        // --- Funkcje generowania wykresów ---
+        function renderFertilizerChart(percentages) {
+            const ctx = document.getElementById('fertilizerChart').getContext('2d');
+            
+            // Filtrowanie nawozów z niezerowymi wartościami
+            const labels = [];
+            const data = [];
+            const backgroundColors = [];
+            
+            FERTILIZER_NAMES.forEach((name, i) => {
+                if (percentages[i] > 0.01) {
+                    labels.push(name);
+                    data.push(percentages[i]);
+                    backgroundColors.push(CHART_COLORS[i % CHART_COLORS.length]);
+                }
+            });
+            
+            fertilizerChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right',
+                            labels: {
+                                font: {
+                                    size: 12
+                                }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.raw.toFixed(1);
+                                    return `${label}: ${value}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function renderNutrientComparisonChart(inputs, nutrients) {
+            const ctx = document.getElementById('nutrientComparisonChart').getContext('2d');
+            
+            const { targetN, targetP, targetK, targetMg, useMg } = inputs;
+            const { N: rN, P: rP, K: rK, Mg: rMg } = nutrients;
+            
+            const labels = ['Azot (N)', 'Fosfor (P₂O₅)', 'Potas (K₂O)'];
+            const targetData = [targetN, targetP, targetK];
+            const actualData = [rN, rP, rK];
+            
+            if (useMg) {
+                labels.push('Magnez (Mg)');
+                targetData.push(targetMg);
+                actualData.push(rMg);
+            }
+            
+            nutrientComparisonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Docelowo',
+                            data: targetData,
+                            backgroundColor: 'rgba(79, 70, 229, 0.6)', // indigo-600 z przezroczystością
+                            borderColor: 'rgb(79, 70, 229)',
+                            borderWidth: 1
+                        },
+                        {
+                            label: 'Uzyskano',
+                            data: actualData,
+                            backgroundColor: 'rgba(16, 185, 129, 0.6)', // emerald-500 z przezroczystością
+                            borderColor: 'rgb(16, 185, 129)',
+                            borderWidth: 1
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Zawartość [%]'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.dataset.label || '';
+                                    const value = context.raw.toFixed(2);
+                                    return `${label}: ${value}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
 
         // --- Funkcja eksportu do PDF ---
         function handlePdfExport() {
@@ -877,25 +1150,175 @@
                 return;
             }
             
-            alert("Funkcja eksportu do PDF zostanie zaimplementowana w przyszłej wersji.");
+            // Pokaż modal z informacją o generowaniu PDF
+            pdfGeneratingModal.classList.remove('hidden');
             
-            // Tutaj można dodać kod do generowania PDF
-            // Przykładowa implementacja z użyciem biblioteki jsPDF:
-            /*
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                // Dodanie treści do PDF
-                doc.text("Raport Mieszanki NPK", 20, 20);
-                // ... więcej kodu do generowania PDF
-                
-                // Zapisanie pliku
-                doc.save("mieszanka_npk.pdf");
-            } catch (error) {
-                showErrorModal(`Błąd podczas generowania PDF: ${error.message}`);
+            setTimeout(() => {
+                try {
+                    const { jsPDF } = window.jspdf;
+                    
+                    // Utwórz nowy dokument PDF
+                    const doc = new jsPDF({
+                        orientation: 'portrait',
+                        unit: 'mm',
+                        format: 'a4'
+                    });
+                    
+                    // Dodaj nagłówek
+                    doc.setFontSize(18);
+                    doc.setTextColor(0, 0, 0);
+                    doc.text('Raport Mieszanki NPK', 105, 20, { align: 'center' });
+                    
+                    // Dodaj datę
+                    doc.setFontSize(10);
+                    doc.text(`Data wygenerowania: ${new Date().toLocaleString('pl-PL')}`, 105, 30, { align: 'center' });
+                    
+                    // Przygotuj dane do wydruku
+                    const inputs = getInputs();
+                    const { bestCombination, tolerances } = lastResults;
+                    const { percentages, nutrients, cost } = bestCombination;
+                    
+                    // Dodaj informacje o parametrach
+                    doc.setFontSize(12);
+                    doc.text('Parametry wejściowe:', 20, 45);
+                    doc.setFontSize(10);
+                    doc.text(`Masa mieszanki: ${inputs.totalMass} kg`, 25, 55);
+                    doc.text(`Docelowy skład: N: ${inputs.targetN}%, P₂O₅: ${inputs.targetP}%, K₂O: ${inputs.targetK}%${inputs.useMg ? `, Mg: ${inputs.targetMg}%` : ''}`, 25, 60);
+                    doc.text(`Strategia optymalizacji: ${inputs.optimizationGoal === 'cost' ? 'Koszt' : 'Dokładność'}`, 25, 65);
+                    doc.text(`Tolerancja: ±${inputs.userTolerance}%`, 25, 70);
+                    
+                    // Dodaj tabelę składników
+                    doc.setFontSize(12);
+                    doc.text('Składniki Mieszanki NPK:', 20, 85);
+                    
+                    let yPos = 95;
+                    doc.setFontSize(9);
+                    doc.text('Nawóz', 25, yPos);
+                    doc.text('%', 120, yPos, { align: 'right' });
+                    doc.text('Ilość [kg]', 170, yPos, { align: 'right' });
+                    
+                    yPos += 5;
+                    doc.setLineWidth(0.1);
+                    doc.line(20, yPos, 190, yPos);
+                    
+                    yPos += 7;
+                    let totalCalculatedMass = 0;
+                    let actualSumPercentage = 0;
+                    
+                    FERTILIZER_NAMES.forEach((name, i) => {
+                        const percentage = percentages[i];
+                        if (percentage > 0.01) {
+                            const actualKg = (percentage / 100) * inputs.totalMass;
+                            totalCalculatedMass += actualKg;
+                            actualSumPercentage += percentage;
+                            
+                            doc.text(name, 25, yPos);
+                            doc.text(percentage.toFixed(1), 120, yPos, { align: 'right' });
+                            doc.text(actualKg.toFixed(2), 170, yPos, { align: 'right' });
+                            
+                            yPos += 7;
+                        }
+                    });
+                    
+                    doc.line(20, yPos, 190, yPos);
+                    yPos += 7;
+                    doc.setFont(undefined, 'bold');
+                    doc.text('Suma:', 25, yPos);
+                    doc.text(actualSumPercentage.toFixed(1), 120, yPos, { align: 'right' });
+                    doc.text(totalCalculatedMass.toFixed(2), 170, yPos, { align: 'right' });
+                    doc.setFont(undefined, 'normal');
+                    
+                    // Dodaj tabelę kosztów
+                    yPos += 15;
+                    doc.setFontSize(12);
+                    doc.text('Szacowany Koszt Mieszanki NPK:', 20, yPos);
+                    
+                    yPos += 10;
+                    doc.setFontSize(9);
+                    doc.text('Całkowity koszt:', 25, yPos);
+                    doc.text(`${cost.toFixed(2)} zł`, 170, yPos, { align: 'right' });
+                    
+                    yPos += 7;
+                    doc.text('Koszt za 1 kg:', 25, yPos);
+                    doc.text(`${(cost / inputs.totalMass).toFixed(2)} zł`, 170, yPos, { align: 'right' });
+                    
+                    // Dodaj tabelę wynikową
+                    yPos += 15;
+                    doc.setFontSize(12);
+                    doc.text('Wynikowa Mieszanka NPK:', 20, yPos);
+                    
+                    yPos += 10;
+                    doc.setFontSize(9);
+                    doc.text('Składnik', 25, yPos);
+                    doc.text('Docelowo [%]', 80, yPos, { align: 'right' });
+                    doc.text('Uzyskano [%]', 130, yPos, { align: 'right' });
+                    doc.text('Różnica [%]', 170, yPos, { align: 'right' });
+                    
+                    yPos += 5;
+                    doc.line(20, yPos, 190, yPos);
+                    
+                    yPos += 7;
+                    
+                    // Funkcja do dodawania wiersza z danymi składnika
+                    const addNutrientRow = (name, target, result, tolerance) => {
+                        if (target === null || target === undefined) return;
+                        
+                        const difference = result - target;
+                        
+                        doc.text(name, 25, yPos);
+                        doc.text(target.toFixed(2), 80, yPos, { align: 'right' });
+                        doc.text(result.toFixed(2), 130, yPos, { align: 'right' });
+                        
+                        if (Math.abs(difference) > tolerance) {
+                            doc.setTextColor(255, 0, 0); // Czerwony dla wartości poza tolerancją
+                        } else if (Math.abs(difference) > 0.01) {
+                            doc.setTextColor(255, 165, 0); // Pomarańczowy dla małych różnic
+                        }
+                        
+                        doc.text(difference.toFixed(2), 170, yPos, { align: 'right' });
+                        doc.setTextColor(0, 0, 0); // Przywrócenie czarnego koloru
+                        
+                        yPos += 7;
+                    };
+                    
+                    addNutrientRow('Azot (N)', inputs.targetN, nutrients.N, tolerances.N);
+                    addNutrientRow('Fosfor (P₂O₅)', inputs.targetP, nutrients.P, tolerances.P);
+                    addNutrientRow('Potas (K₂O)', inputs.targetK, nutrients.K, tolerances.K);
+                    
+                    if (inputs.useMg) {
+                        addNutrientRow('Magnez (Mg)', inputs.targetMg, nutrients.Mg, tolerances.Mg);
+                    }
+                    
+                    doc.text('Siarka (S)', 25, yPos);
+                    doc.text('-', 80, yPos, { align: 'right' });
+                    doc.text(nutrients.S.toFixed(2), 130, yPos, { align: 'right' });
+                    doc.text('-', 170, yPos, { align: 'right' });
+                    
+                    // Dodaj stopkę
+                    doc.setFontSize(8);
+                    doc.text(`© ${new Date().getFullYear()} Space Plant Marceli Dubczyk. Wygenerowano przez Kalkulator Mieszanki NPK v39.`, 105, 285, { align: 'center' });
+                    
+                    // Zapisz plik
+                    doc.save('mieszanka_npk_raport.pdf');
+                    
+                } catch (error) {
+                    console.error("Error generating PDF:", error);
+                    showErrorModal(`Błąd podczas generowania PDF: ${error.message}`);
+                } finally {
+                    // Ukryj modal z informacją o generowaniu PDF
+                    pdfGeneratingModal.classList.add('hidden');
+                }
+            }, 500); // Małe opóźnienie, aby modal zdążył się pokazać
+        }
+        
+        // --- Funkcja drukowania wyników ---
+        function handlePrint() {
+            if (!lastResults) {
+                showErrorModal("Brak wyników do wydrukowania. Najpierw oblicz mieszankę NPK.");
+                return;
             }
-            */
+            
+            window.print();
         }
 
         // --- Initialization ---
